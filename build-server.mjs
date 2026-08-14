@@ -1,5 +1,5 @@
 Exit code: 0
-Wall time: 1.3 seconds
+Wall time: 0.4 seconds
 Output:
 import {mkdir, copyFile, writeFile} from 'node:fs/promises';
 await mkdir('dist/server',{recursive:true});
@@ -13,7 +13,8 @@ const loginPage=(error='')=>new Response('<!doctype html><html><head><meta name=
 const schema=\`CREATE TABLE IF NOT EXISTS trades (id TEXT PRIMARY KEY, title TEXT NOT NULL, season INTEGER NOT NULL, side_a TEXT NOT NULL, side_b TEXT NOT NULL, submitted_by TEXT NOT NULL, created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS trade_votes (trade_id TEXT NOT NULL, voter TEXT NOT NULL, value INTEGER NOT NULL CHECK(value BETWEEN 1 AND 5), updated_at TEXT NOT NULL, PRIMARY KEY(trade_id,voter));
 CREATE TABLE IF NOT EXISTS trade_vote_history (id TEXT PRIMARY KEY, trade_id TEXT NOT NULL, voter TEXT NOT NULL, value INTEGER NOT NULL CHECK(value BETWEEN 1 AND 5), created_at TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS vault_items (id TEXT PRIMARY KEY, kind TEXT NOT NULL, title TEXT NOT NULL, caption TEXT NOT NULL DEFAULT '', season INTEGER NOT NULL, submitted_by TEXT NOT NULL, object_key TEXT, external_url TEXT, mime_type TEXT, created_at TEXT NOT NULL);\`;
+CREATE TABLE IF NOT EXISTS vault_items (id TEXT PRIMARY KEY, kind TEXT NOT NULL, title TEXT NOT NULL, caption TEXT NOT NULL DEFAULT '', season INTEGER NOT NULL, submitted_by TEXT NOT NULL, object_key TEXT, external_url TEXT, mime_type TEXT, created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS trade_award_votes (category TEXT NOT NULL, voter TEXT NOT NULL, subject_type TEXT NOT NULL, subject_id TEXT NOT NULL, title TEXT NOT NULL, details TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL, PRIMARY KEY(category,voter));\`;
 async function ready(db){await db.exec(schema)}
 async function api(request,env){
  if(!env.DB)return json({error:'Database binding unavailable'},503);
@@ -59,6 +60,14 @@ async function api(request,env){
    try{const parsed=new URL(externalUrl);if(!['https:','http:'].includes(parsed.protocol))throw 0;safeUrl=parsed.toString()}catch{return json({error:'Enter a valid video URL'},400)}
   }
   await env.DB.prepare('INSERT INTO vault_items (id,kind,title,caption,season,submitted_by,object_key,external_url,mime_type,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)').bind(id,kind,title.slice(0,100),caption.slice(0,500),season,submittedBy.slice(0,80),objectKey,safeUrl,mimeType,now).run();return json({id},201);
+ }
+ if(method==='GET'&&url.pathname==='/api/trade-awards'){
+  const q=await env.DB.prepare('SELECT category,subject_type,subject_id,title,details,COUNT(*) votes,MAX(updated_at) updated_at FROM trade_award_votes GROUP BY category,subject_type,subject_id,title,details ORDER BY category,votes DESC,updated_at DESC').all();return json(q.results||[]);
+ }
+ if(method==='POST'&&url.pathname==='/api/trade-awards'){
+  const b=await request.json(),category=String(b.category||''),voter=String(b.voter||'').trim(),subjectType=String(b.subjectType||''),subjectId=String(b.subjectId||'').trim(),title=String(b.title||'').trim(),details=String(b.details||'').trim();
+  if(!['best','worst'].includes(category)||!['manual','sleeper'].includes(subjectType)||!voter||!subjectId||!title)return json({error:'Choose a manager and trade'},400);
+  await env.DB.prepare('INSERT INTO trade_award_votes (category,voter,subject_type,subject_id,title,details,updated_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(category,voter) DO UPDATE SET subject_type=excluded.subject_type,subject_id=excluded.subject_id,title=excluded.title,details=excluded.details,updated_at=excluded.updated_at').bind(category,voter.slice(0,80),subjectType,subjectId.slice(0,100),title.slice(0,140),details.slice(0,800),new Date().toISOString()).run();return json({ok:true});
  }
  const media=url.pathname.match(/^\\/api\\/vault\\/([^/]+)\\/media$/);
  if(media&&method==='GET'){
