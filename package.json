@@ -1,7 +1,10 @@
+Exit code: 0
+Wall time: 0.5 seconds
+Output:
 {
   "name": "green-fn-dynasty",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "scripts": { "start": "vite --host 0.0.0.0", "build": "vite build --outDir dist/client && node build-server.mjs" },
   "dependencies": { "@vitejs/plugin-react": "latest", "vite": "latest", "react": "latest", "react-dom": "latest", "lucide-react": "latest" },
   "devDependencies": {}
