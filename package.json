@@ -1,0 +1,9 @@
+{
+  "name": "green-fn-dynasty",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": { "start": "vite --host 0.0.0.0", "build": "vite build --outDir dist/client && node build-server.mjs" },
+  "dependencies": { "@vitejs/plugin-react": "latest", "vite": "latest", "react": "latest", "react-dom": "latest", "lucide-react": "latest" },
+  "devDependencies": {}
+}
+
