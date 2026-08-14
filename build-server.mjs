@@ -47,6 +47,7 @@ async function api(request,env){
   const id=crypto.randomUUID(),now=new Date().toISOString();let objectKey=null,mimeType=null,safeUrl=null;
   if(kind==='image'){
    if(!env.VAULT)return json({error:'Vault storage unavailable'},503);
+   const imageCount=await env.DB.prepare("SELECT COUNT(*) total FROM vault_items WHERE kind='image'").first();if(Number(imageCount?.total||0)>=15)return json({error:'The Vault has reached its 15-photo limit'},409);
    if(!file||typeof file==='string'||!String(file.type).startsWith('image/'))return json({error:'Choose an image file'},400);
    if(file.size>8*1024*1024)return json({error:'Images must be 8 MB or smaller'},413);
    mimeType=file.type;objectKey=id+'-'+String(file.name||'image').replace(/[^a-zA-Z0-9._-]/g,'_').slice(-80);await env.VAULT.put(objectKey,await file.arrayBuffer(),{httpMetadata:{contentType:mimeType}});
