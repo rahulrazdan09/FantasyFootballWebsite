@@ -55,7 +55,7 @@ async function api(request,env){
   }
   await env.DB.prepare('INSERT INTO vault_items (id,kind,title,caption,season,submitted_by,object_key,external_url,mime_type,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)').bind(id,kind,title.slice(0,100),caption.slice(0,500),season,submittedBy.slice(0,80),objectKey,safeUrl,mimeType,now).run();return json({id},201);
  }
- const media=url.pathname.match(/^\/api\/vault\/([^/]+)\/media$/);
+ const media=url.pathname.match(/^\\/api\\/vault\\/([^/]+)\\/media$/);
  if(media&&method==='GET'){
   if(!env.VAULT)return json({error:'Vault storage unavailable'},503);const row=await env.DB.prepare('SELECT object_key,mime_type FROM vault_items WHERE id=?').bind(media[1]).first();if(!row?.object_key)return json({error:'Not found'},404);const object=await env.VAULT.get(row.object_key);if(!object)return json({error:'Not found'},404);return new Response(object.body,{headers:{'content-type':row.mime_type||'application/octet-stream','cache-control':'public, max-age=86400'}});
  }
